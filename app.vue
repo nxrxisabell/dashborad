@@ -1,9 +1,15 @@
 <template>
-  <div>
-    {{ data}}
-  </div>
+  <weatherStation :auth="authorization"> </weatherStation>
+  <ElectricCabinet :auth="authorization"></ElectricCabinet>
+ <diagramm :auth="authorization"></diagramm> 
+  <!-- <test></test> -->
 </template>
 <script setup lang=ts>
+const authorization = {
+  jws: "eyJraWQiOiJlUVpIRE5UaURyMkxGM2RaY0lBVTlNdHFhUmRoZ1VjdXUrell6ak9RVUg0PSIsImFsZyI6IlJTMjU2In0.eyJjdXN0b206cmVnaW9uIjoiZXUtY2VudHJhbC0xIiwic3ViIjoiMDVmMDVlMDMtMDEwZi00Y2RjLWI4YzMtMGMzMmVhYjE0MjBlIiwiY3VzdG9tOnRpbWV6b25lIjoiVVRDKzMgRXVyb3BlXC9IZWxzaW5raSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAudXMtZWFzdC0xLmFtYXpvbmF3cy5jb21cL3VzLWVhc3QtMV90TWZnazFOb0UiLCJjb2duaXRvOnVzZXJuYW1lIjoiMDVmMDVlMDMtMDEwZi00Y2RjLWI4YzMtMGMzMmVhYjE0MjBlIiwiYXVkIjoiMWlnODNlNWtrbGg5cGk5YnZycTE3bXFzZjUiLCJldmVudF9pZCI6IjNiMDQwOWQ5LTg4ZDUtNGExMy1hMGI2LThkNGI3MzU2NTc3OCIsImN1c3RvbTpsYW5ndWFnZSI6ImVuIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3MjgzNjY4MTAsImV4cCI6MTcyODM3NDAyNiwiaWF0IjoxNzI4MzcwNDI2LCJlbWFpbCI6InBhc2l3YWx0dGVyaS52YWx0YW5lbkBlZHV2YW50YWEuZmkifQ.hjO2tsPIN3aFiEUUpPt9EtO_vHf6LBzQnBLPZLPuSfx29EPtWa-3w_9IHhYSckOi547Pw5d_tQqIpLpPJ1rQkW0RHK6pAKqZOf1GnPTFPPxOtpMkslZTLclDScwpi4ByKSshzeO-4zZftRyWtYmKiNBNtjKDEaexr-vSQteJLuOeXpvoqa5sNXNlZo0X4dxvfZ5NRoETgjp8HL48XmpLJ_raKRWnf-rrKwd45jFlwtA6v49U-8vfzecM6O8MsLfwwGFX65PNnfTSi7YyqKR9hrUoxHxkWzoPKSOzt-lsnpY_iZi-h2jWyt9sSGfxxTCe_qdTQKZq0cEJcvKjgRAvLg",
+tokenid: `42B30AB7-1D26-442A-AF49-924BA8717BA1`
 
-const { data } = await useFetch('/api/hello')
+}
+
+
 </script>
