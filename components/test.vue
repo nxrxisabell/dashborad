@@ -1,23 +1,21 @@
 <template>
   <div>
-    <button @click="filterData('7days')">Last 7 Days</button>
-    <button @click="filterData('1month')">Last Month</button>
-    <button @click="filterData('3months')">Last 3 Month</button>
-    <button @click="filterData('all')">All Data</button>
-  </div>
-  <div
-    v-if="auswertung"
-    style="max-width: 1300px !important; max-height: 300px; height: 300px"
-  >
-    <Line :data="chartData" :options="chartOptions" :update-mode="'default'" />
+    <button @click="filterData('7days')">Letzte 7 Tage</button>
+    <button @click="filterData('1month')">Letzter Monat</button>
+    <button @click="filterData('3months')">Letzte 3 Monate</button>
+    <button @click="filterData('all')">Alle Daten</button>
+
+    <canvas ref="chartCanvas"></canvas>
   </div>
 </template>
-<script setup lang="ts">
-import { Line } from "vue-chartjs";
+
+<script setup>
+import { ref, onMounted } from "vue";
 import {
-  Chart as ChartJS,
+  Chart,
   CategoryScale,
   LinearScale,
+  LineController,
   PointElement,
   LineElement,
   Title,
@@ -26,19 +24,19 @@ import {
   scales,
   TimeScale,
 } from "chart.js";
-import "chartjs-adapter-dayjs";
-
-ChartJS.register(
+Chart.register(
   CategoryScale,
   LinearScale,
+  LineController,
   PointElement,
   LineElement,
   Title,
   Tooltip,
   Legend,
+  scales,
   TimeScale
 );
-
+import "chartjs-adapter-dayjs";
 const props = defineProps(["auth"]);
 const { data } = await useFetch(
   "https://eu.iot-api.milesight-iot.com/v1/devices/0f153e4e-400e-42a4-a3fb-a5373d68b2be/records?pageSize=1000&order=desc",
@@ -50,129 +48,114 @@ const { data } = await useFetch(
     },
   }
 );
-const auswertung = data.value.data;
-const price = await useFetch(
+
+const priceData = await useFetch(
   "https://www.fingrid.fi/api/graph/dataset?configurationItems%5B0%5D.variableId=244&configurationItems%5B1%5D.variableId=106&start=2024-09-26+00%3A00%3A00&end=2024-10-13+23%3A59%3A59"
 );
 
-let filteredData;
-let labels;
-let batteryData;
-let filteredPriceData;
-let labelsTruncated;
-
-async function filterData(period) {
-  const now = new Date();
-
-  switch (period) {
-    case "7days":
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(now.getDate() - 7);
-      filteredData = auswertung.filter(
-        (item) => new Date(item.ts * 1000) >= sevenDaysAgo
-      );
-      fertigData();
-      location.reload();
-      break;
-    case "1month":
-      const oneMonthAgo = new Date(now);
-      oneMonthAgo.setMonth(now.getMonth() - 1);
-      filteredData = auswertung.filter(
-        (item) => new Date(item.ts * 1000) >= oneMonthAgo
-      );
-      fertigData();
-      break;
-    case "3months":
-      const threeMonthsAgo = new Date(now);
-      threeMonthsAgo.setMonth(now.getMonth() - 3);
-      filteredData = auswertung.filter(
-        (item) => new Date(item.ts * 1000) >= threeMonthsAgo
-      );
-      fertigData();
-      break;
-    case "all":
-      filteredData = auswertung.filter((item, index, arr) => {
-        return index === 0 || item.battery !== arr[index - 1].battery;
-      });
-      fertigData();
-      break;
-  }
-}
-await filterData("all");
-
-async function fertigData() {
-  labels = filteredData.map((item) => new Date(item.ts * 1000));
-
-  batteryData = filteredData.map((item) => item.battery);
-
-  const truncateToHour = (date) => {
-    const newDate = new Date(date);
-    newDate.setMinutes(0, 0, 0);
-    return newDate.getTime();
-  };
-
-  labelsTruncated = labels.map((label) => truncateToHour(label));
-
-  const priceDataTruncated = price.data.value[0].Values.map((item) => ({
-    ts: truncateToHour(new Date(item.Timestamp)),
-    value: item.Value,
-  }));
-
-  const priceFilteredData = priceDataTruncated.filter((item) =>
-    labelsTruncated.includes(item.ts)
-  );
-
-  filteredPriceData = priceFilteredData.map((item) => item.value);
-}
+const auswertung = ref([data.value.data]); // Dein ursprüngliches Datenset hier
+const price = ref([priceData.data.value[0].Values]); // Preisdaten hier
 const chartData = ref({
-  labels: labelsTruncated,
+  labels: [],
   datasets: [
     {
-      label: "Battery",
+      label: "Batterie",
       backgroundColor: "#f87979",
-      data: batteryData,
-      yAxisID: "y",
+      data: [],
     },
     {
-      label: "Price",
-      backgroundColor: "#g86786",
-      data: filteredPriceData,
-      yAxisID: "y1",
+      label: "Preis",
+      backgroundColor: "#f86786",
+      data: [],
     },
   ],
 });
-const chartOptions = ref({
-  responsive: true,
-  maintainAspectRatio: false,
+const chart = ref(null);
 
-  scales: {
-    x: {
-      type: "time",
-      time: {
-        unit: "day",
-      },
-      title: {
-        display: true,
-        text: "Day",
+const createChart = () => {
+  const ctx = document.querySelector("canvas").getContext("2d");
+  chart.value = new Chart(ctx, {
+    type: "line",
+    data: chartData.value,
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          type: "time",
+          time: {
+            unit: "hour",
+          },
+        },
+        y: {
+          min: 0,
+          max: 100,
+        },
       },
     },
+  });
+};
 
-    y: {
-      title: {
-        display: true,
-        text: "Batterie (%)",
-      },
-      position: "left",
-      min: 0,
-      max: 100,
-    },
-    y1: {
-      title: {
-        display: true,
-        text: "Price (€)",
-      },
-      position: "right",
-    },
-  },
+const filterData = (period) => {
+  const now = new Date();
+  let filteredAuswertung = auswertung.value;
+
+  switch (period) {
+    case "7days":
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      filteredAuswertung = auswertung.value.filter((item) => {
+        const itemDate = new Date(item.ts * 1000);
+        return itemDate >= sevenDaysAgo && itemDate <= now;
+      });
+      break;
+    case "1month":
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(now.getMonth() - 1);
+      filteredAuswertung = auswertung.value.filter((item) => {
+        const itemDate = new Date(item.ts * 1000);
+        return itemDate >= oneMonthAgo && itemDate <= now;
+      });
+      break;
+    case "3months":
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(now.getMonth() - 3);
+      filteredAuswertung = auswertung.value.filter((item) => {
+        const itemDate = new Date(item.ts * 1000);
+        return itemDate >= threeMonthsAgo && itemDate <= now;
+      });
+      break;
+    case "all":
+      filteredAuswertung = auswertung.value;
+      break;
+  }
+
+  console.log("Filtered Battery Data:", filteredAuswertung); // Debugging
+
+  const labels = filteredAuswertung.map((item) => new Date(item.ts * 1000));
+  const batteryData = filteredAuswertung.map((item) => item.battery);
+
+  // Preisdaten nach Stunden truncieren
+  const priceFilteredData = price.value.filter((item) => {
+    const itemDate = new Date(item.Timestamp);
+    return labels.some((label) => label.getTime() === itemDate.getTime());
+  });
+
+  console.log("Filtered Price Data:", priceFilteredData); // Debugging
+
+  chartData.value.labels = labels;
+  chartData.value.datasets[0].data = batteryData;
+  chartData.value.datasets[1].data = priceFilteredData.map(
+    (item) => item.Value
+  );
+
+  if (chart.value) {
+    chart.value.update();
+  } else {
+    createChart();
+  }
+};
+
+onMounted(() => {
+  createChart();
 });
 </script>
